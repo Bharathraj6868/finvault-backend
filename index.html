@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FinVault</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<script>
+tailwind.config={theme:{extend:{fontFamily:{sans:['Plus Jakarta Sans','sans-serif'],serif:['Instrument Serif','serif']}}}}
+</script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+--bg:#08090c;--bg2:#0e1117;--card:rgba(255,255,255,.03);--card-h:rgba(255,255,255,.05);
+--border:rgba(255,255,255,.06);--border-h:rgba(255,255,255,.1);
+--text:#f0f0f3;--text2:rgba(255,255,255,.5);--text3:rgba(255,255,255,.25);
+--gold:#d4a43a;--gold2:#f0c95c;--gold-bg:rgba(212,164,58,.08);
+--inc:#2dd4a0;--inc-bg:rgba(45,212,160,.08);
+--exp:#f06060;--exp-bg:rgba(240,96,96,.08);
+--pur:#a78bfa;--pur-bg:rgba(167,139,250,.08);
+}
+body{background:var(--bg);color:var(--text);font-family:'Plus Jakarta Sans',sans-serif;overflow-x:hidden;-webkit-font-smoothing:antialiased}
+::-webkit-scrollbar{width:4px}::-webkit-scrollbar-thumb{background:rgba(255,255,255,.08);border-radius:4px}
+
+/* NOISE */
+body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.025;
+background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+background-size:128px}
+
+/* GLOW */
+.glow{position:fixed;border-radius:50%;filter:blur(140px);pointer-events:none;z-index:0}
+.g1{width:600px;height:600px;background:rgba(212,164,58,.06);top:-200px;right:-100px;animation:gf1 20s ease-in-out infinite}
+.g2{width:500px;height:500px;background:rgba(45,212,160,.04);bottom:-150px;left:-100px;animation:gf2 24s ease-in-out infinite}
+.g3{width:400px;height:400px;background:rgba(167,139,250,.04);top:40%;left:30%;animation:gf3 18s ease-in-out infinite}
+@keyframes gf1{0%,100%{transform:translate(0,0)}50%{transform:translate(-80px,60px)}}
+@keyframes gf2{0%,100%{transform:translate(0,0)}50%{transform:translate(60px,-50px)}}
+@keyframes gf3{0%,100%{transform:translate(0,0)}50%{transform:translate(-40px,40px)}}
+
+/* GLASS */
+.glass{background:var(--card);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border:1px solid var(--border)}
+.glass:hover{border-color:var(--border-h);background:var(--card-h)}
+
+/* LOGIN */
+.login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;position:relative;z-index:1}
+.login-box{width:100%;max-width:420px;padding:40px}
+.acct{display:flex;align-items:center;gap:14px;padding:16px 18px;border-radius:14px;cursor:pointer;transition:all .3s;background:var(--card);border:1px solid var(--border);position:relative;overflow:hidden}
+.acct::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,.02),transparent);opacity:0;transition:opacity .3s}
+.acct:hover{border-color:rgba(212,164,58,.3);transform:translateY(-2px);box-shadow:0 20px 60px rgba(0,0,0,.3)}
+.acct:hover::before{opacity:1}
+
+/* SIDEBAR */
+.side{width:260px;position:fixed;top:0;left:0;bottom:0;background:rgba(8,9,12,.85);backdrop-filter:blur(30px);-webkit-backdrop-filter:blur(30px);border-right:1px solid var(--border);z-index:30;display:flex;flex-direction:column;transition:transform .3s}
+.ni{display:flex;align-items:center;gap:11px;padding:10px 16px;border-radius:10px;font-size:13px;font-weight:500;color:var(--text2);text-decoration:none;transition:all .15s;position:relative}
+.ni:hover{color:var(--text);background:rgba(255,255,255,.03)}
+.ni.on{color:var(--gold2);background:var(--gold-bg)}
+.ni.on::after{content:'';position:absolute;left:0;top:50%;transform:translateY(-50%);width:2.5px;height:18px;background:var(--gold);border-radius:0 3px 3px 0}
+
+/* STAT CARD */
+.sc{border-radius:16px;padding:22px 24px;position:relative;overflow:hidden;background:var(--card);border:1px solid var(--border);transition:all .3s}
+.sc:hover{border-color:var(--border-h);transform:translateY(-3px);box-shadow:0 20px 60px rgba(0,0,0,.25)}
+.sc .line{position:absolute;top:0;left:24px;right:24px;height:1px}
+.sc .glow-dot{position:absolute;top:18px;right:18px;width:6px;height:6px;border-radius:50%}
+
+/* CHART CARD */
+.cc{border-radius:16px;padding:24px;background:var(--card);border:1px solid var(--border)}
+
+/* TABLE */
+.tw{border-radius:16px;overflow:hidden;background:var(--card);border:1px solid var(--border)}
+table{width:100%;border-collapse:collapse}
+thead th{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);font-weight:700;padding:14px 20px;text-align:left;border-bottom:1px solid var(--border);background:rgba(255,255,255,.01)}
+tbody td{padding:13px 20px;border-bottom:1px solid rgba(255,255,255,.03);font-size:13px;color:var(--text2)}
+tbody tr{transition:background .15s}tbody tr:hover{background:rgba(255,255,255,.015)}
+tbody tr:last-child td{border-bottom:none}
+
+/* BADGES */
+.badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:uppercase}
+.b-inc{background:var(--inc-bg);color:var(--inc)}.b-exp{background:var(--exp-bg);color:var(--exp)}
+.b-adm{background:var(--gold-bg);color:var(--gold2)}.b-ana{background:var(--inc-bg);color:var(--inc)}.b-viw{background:var(--pur-bg);color:var(--pur)}
+
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;gap:7px;padding:10px 20px;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;border:none;font-family:inherit;transition:all .2s;white-space:nowrap}
+.btn-p{background:linear-gradient(135deg,var(--gold),#c49520);color:#0a0a0a;box-shadow:0 4px 20px rgba(212,164,58,.15)}
+.btn-p:hover{box-shadow:0 8px 30px rgba(212,164,58,.25);transform:translateY(-1px)}
+.btn-g{background:transparent;color:var(--text2);border:1px solid var(--border)}.btn-g:hover{border-color:var(--border-h);color:var(--text)}
+.btn-d{background:var(--exp-bg);color:var(--exp);border:none}.btn-d:hover{background:rgba(240,96,96,.15)}
+.btn-sm{padding:6px 12px;font-size:12px;border-radius:8px}
+.btn-ic{width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;border-radius:8px;border:none;cursor:pointer;background:transparent;color:var(--text3);transition:all .15s;font-size:11px}
+.btn-ic:hover{background:rgba(255,255,255,.05);color:var(--text)}.btn-ic.dg:hover{background:var(--exp-bg);color:var(--exp)}
+
+/* INPUTS */
+.fi{background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:10px;padding:10px 14px;color:var(--text);font-size:13px;width:100%;outline:none;font-family:inherit;transition:all .2s}
+.fi:focus{border-color:rgba(212,164,58,.4);box-shadow:0 0 0 3px rgba(212,164,58,.06)}
+.fi::placeholder{color:var(--text3)}
+select.fi{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' fill='%23666' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center;padding-right:34px}
+
+/* MODAL */
+.mo{position:fixed;inset:0;z-index:80;background:rgba(0,0,0,.7);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;animation:mf .2s}
+.mb{background:var(--bg2);border:1px solid var(--border-h);border-radius:18px;padding:28px;width:90%;max-width:440px;animation:mi .3s ease}
+@keyframes mf{from{opacity:0}to{opacity:1}}
+@keyframes mi{from{opacity:0;transform:scale(.96) translateY(10px)}to{opacity:1;transform:none}}
+
+/* TOAST */
+.twrap{position:fixed;top:20px;right:20px;z-index:200;display:flex;flex-direction:column;gap:8px}
+.toast{padding:12px 18px;border-radius:12px;font-size:13px;font-weight:500;border:1px solid var(--border);background:var(--bg2);display:flex;align-items:center;gap:10px;animation:ti .3s ease;box-shadow:0 16px 48px rgba(0,0,0,.5);backdrop-filter:blur(12px)}
+.toast.ok{border-left:3px solid var(--inc)}.toast.er{border-left:3px solid var(--exp)}.toast.in{border-left:3px solid var(--gold)}
+@keyframes ti{from{opacity:0;transform:translateX(30px)}to{opacity:1;transform:none}}
+
+/* ANIMS */
+.fiu{animation:fiu .4s ease}
+@keyframes fiu{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+.ri{opacity:0;animation:ris .35s ease forwards}
+@keyframes ris{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+
+/* PAG */
+.pb{width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid var(--border);background:transparent;color:var(--text2);transition:all .15s}
+.pb:hover{border-color:var(--border-h);color:var(--text)}.pb.on{background:var(--gold);color:#0a0a0a;border-color:var(--gold)}.pb:disabled{opacity:.25;cursor:default;pointer-events:none}
+
+/* TOGGLE */
+.tog{position:relative;width:38px;height:20px;cursor:pointer;display:inline-block}
+.tog input{display:none}.tog-t{position:absolute;inset:0;background:rgba(255,255,255,.08);border-radius:10px;transition:background .2s}
+.tog input:checked+.tog-t{background:var(--inc)}.tog-k{position:absolute;top:2px;left:2px;width:16px;height:16px;background:#fff;border-radius:50%;transition:transform .2s;pointer-events:none}
+.tog input:checked~.tog-k{transform:translateX(18px)}
+
+/* AMT */
+.ai{color:var(--inc);font-weight:700}.ae{color:var(--exp);font-weight:700}
+
+/* MOBILE */
+.mh{display:none;padding:12px 16px;align-items:center;gap:12px;position:sticky;top:0;z-index:25;background:rgba(8,9,12,.9);backdrop-filter:blur(20px);border-bottom:1px solid var(--border)}
+.mov{display:none;position:fixed;inset:0;z-index:28;background:rgba(0,0,0,.5)}
+@media(max-width:900px){.side{transform:translateX(-100%)}.side.open{transform:translateX(0)}.mov.open{display:block}.mh{display:flex}.main{margin-left:0!important}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+
+.cat-dot{width:6px;height:6px;border-radius:50%;display:inline-block;flex-shrink:0}
+</style>
+</head>
+<body>
+<div class="glow g1"></div><div class="glow g2"></div><div class="glow g3"></div>
+<div class="twrap" id="tw"></div>
+<div id="r" style="position:relative;z-index:1"></div>
+
+<script>
+const API='http://localhost:3000/api';
+let tk=localStorage.getItem('ft');let u=JSON.parse(localStorage.getItem('fu')||'null');
+let ch={},cp='dash',tf={s:'',t:'',c:''},tp=0;
+const $=s=>document.querySelector(s),$$=s=>document.querySelectorAll(s);
+const fm=n=>new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'}).format(n);
+const fd=d=>new Date(d+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+const ini=n=>n.split(' ').map(w=>w[0]).join('');
+const cn=p=>({viewer:['vr','vd'],analyst:['vr','vd','va'],admin:['vr','vd','va','cr','ur','dr','mu']}[u?.role]||[]).includes(p);
+const CC={'Salary':'#d4a43a','Freelance':'#f0c95c','Investments':'#2dd4a0','Rental Income':'#34d9ab','Other Income':'#8ac926','Food & Dining':'#f06060','Transportation':'#f87171','Utilities':'#a78bfa','Entertainment':'#e879a8','Shopping':'#f59e0b','Healthcare':'#38bdf8','Education':'#c084fc','Other Expense':'#6b7280'};
+const EC=['Food & Dining','Transportation','Utilities','Entertainment','Shopping','Healthcare','Education','Other Expense'];
+const IC=['Salary','Freelance','Investments','Rental Income','Other Income'];
+
+function toast(m,t='er'){const e=document.createElement('div');e.className=`toast ${t==='success'?'ok':t==='info'?'in':'er'}`;const ic={success:'fa-circle-check',er:'fa-circle-xmark',info:'fa-circle-info'}[t]||'fa-circle-xmark';const cl={success:'var(--inc)',er:'var(--exp)',info:'var(--gold)'}[t]||'var(--exp)';e.innerHTML=`<i class="fa-solid ${ic}" style="color:${cl}"></i>${m}`;$('#tw').appendChild(e);setTimeout(()=>{e.style.transition='all .3s';e.style.opacity='0';e.style.transform='translateX(30px)';setTimeout(()=>e.remove(),300)},3500)}
+
+async function api(p,o={}){const h={'Content-Type':'application/json'};if(tk)h['Authorization']=`Bearer ${tk}`;try{const r=await fetch(API+p,{...o,headers:{...h,...(o.headers||{})}});const d=await r.json();if(!d.success){if(r.status===401){tk=null;u=null;localStorage.clear();render()}throw{status:r.status,...d}}return d.data}catch(e){if(e.status)throw e;throw{status:0,error:'Server not reachable on localhost:3000'}}}
+
+function kc(){Object.values(ch).forEach(c=>c.destroy());ch={}}
+Chart.defaults.color='rgba(255,255,255,.35)';Chart.defaults.borderColor='rgba(255,255,255,.04)';Chart.defaults.font.family='Plus Jakarta Sans';Chart.defaults.font.size=11;Chart.defaults.plugins.legend.labels.usePointStyle=true;Chart.defaults.plugins.legend.labels.pointStyleWidth=7;Chart.defaults.plugins.legend.labels.padding=12;
+
+/* ===== LOGIN ===== */
+function rLogin(){
+const ac=[
+{e:'sarah@finvault.io',p:'Admin123!',n:'Sarah Chen',r:'admin',c:'var(--gold)',d:'Full CRUD, user management, analytics'},
+{e:'marcus@finvault.io',p:'Analyst123!',n:'Marcus Rivera',r:'analyst',c:'var(--inc)',d:'View records, analytics insights'},
+{e:'emily@finvault.io',p:'Viewer123!',n:'Emily Nakamura',r:'viewer',c:'var(--pur)',d:'Read-only dashboard access'},
+];
+ $('#r').innerHTML=`<div class="login-wrap"><div class="login-box">
+<div class="text-center mb-10">
+<p class="text-xs font-semibold uppercase tracking-[.2em] mb-4" style="color:var(--gold)">Finance Dashboard</p>
+<h1 class="text-5xl font-serif italic tracking-tight" style="line-height:1.1">Fin<span style="color:var(--gold)">Vault</span></h1>
+<p class="text-sm mt-3" style="color:var(--text2)">Data processing and access control backend</p>
+</div>
+<div class="flex flex-col gap-3">${ac.map(a=>`<div class="acct" onclick="doL('${a.e}','${a.p}')">
+<div class="w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0" style="background:${a.c};color:#0a0a0a">${ini(a.n)}</div>
+<div class="flex-1 min-w-0"><p class="font-semibold text-sm">${a.n}</p><p class="text-[11px] mt-0.5" style="color:var(--text3)">${a.d}</p></div>
+<span class="badge b-${a.r==='admin'?'adm':a.r==='analyst'?'ana':'viw'}">${a.r}</span>
+</div>`).join('')}</div>
+<p class="text-[11px] text-center mt-8" style="color:var(--text3)">Backend must be running on port 3000</p>
+</div></div>`}
+
+async function doL(e,p){try{const d=await api('/auth/login',{method:'POST',body:JSON.stringify({email:e,password:p})});tk=d.token;u=d.user;localStorage.setItem('ft',tk);localStorage.setItem('fu',JSON.stringify(u));toast('Welcome, '+u.name.split(' ')[0],'success');render()}catch(e){toast(e.error||'Login failed')}}
+
+function logout(){tk=null;u=null;localStorage.clear();kc();render()}
+
+/* ===== APP ===== */
+function rApp(){
+const nav=[{id:'dash',i:'fa-grid-2',l:'Overview',p:'vd'},{id:'txs',i:'fa-arrow-right-arrow-left',l:'Transactions',p:'vr'},{id:'ana',i:'fa-chart-mixed',l:'Analytics',p:'va'},{id:'usr',i:'fa-shield-user',l:'Users',p:'mu'}].filter(n=>cn(n.p));
+ $('#r').innerHTML=`<div class="mov" id="mov" onclick="cm()"></div>
+<div class="mh"><button class="btn-ic" onclick="om()" aria-label="Menu"><i class="fa-solid fa-bars"></i></button><p class="text-sm font-semibold">Fin<span style="color:var(--gold)">Vault</span></p></div>
+<aside class="side" id="side">
+<div class="px-6 pt-7 pb-5"><p class="text-[10px] font-bold uppercase tracking-[.18em] mb-1" style="color:var(--gold)">FinVault</p><p class="text-[10px]" style="color:var(--text3)">Dashboard System</p></div>
+<div class="px-5 mb-2"><p class="text-[9px] font-bold uppercase tracking-[.15em] px-2" style="color:var(--text3)">Menu</p></div>
+<nav class="px-3 flex-1 flex flex-col gap-0.5" id="nv">${nav.map(n=>`<a class="ni${n.id==='dash'?' on':''}" data-p="${n.id}" href="#"><i class="fa-solid ${n.i}" style="width:16px;text-align:center;font-size:13px"></i>${n.l}</a>`).join('')}</nav>
+<div class="px-5 pt-4 mt-auto" style="border-top:1px solid var(--border)">
+<div class="flex items-center gap-3 px-2 py-2">
+<div class="w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0" style="background:${u.role==='admin'?'var(--gold)':u.role==='analyst'?'var(--inc)':'var(--pur)'};color:#0a0a0a">${ini(u.name)}</div>
+<div class="flex-1 min-w-0"><p class="text-xs font-semibold truncate">${u.name}</p><span class="badge b-${u.role==='admin'?'adm':u.role==='analyst'?'ana':'viw'}" style="font-size:9px">${u.role}</span></div>
+</div>
+<button onclick="logout()" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:11px;font-weight:600;font-family:inherit;display:flex;align-items:center;gap:6px;padding:6px 2px;transition:color .15s" onmouseover="this.style.color='var(--exp)'" onmouseout="this.style.color='var(--text3)'"><i class="fa-solid fa-arrow-right-from-bracket" style="font-size:10px"></i>Sign out</button>
+</div></aside>
+<div class="main" style="margin-left:260px"><div class="p-6 lg:p-8 max-w-[1280px] mx-auto" id="pg"></div></div>`;
+ $('#nv').addEventListener('click',e=>{const a=e.target.closest('[data-p]');if(!a)return;e.preventDefault();$$('[data-p]').forEach(n=>n.classList.remove('on'));a.classList.add('on');cp=a.dataset.p;lp();cm()});
+lp()}
+function om(){$('#side').classList.add('open');$('#mov').classList.add('open')}
+function cm(){$('#side').classList.remove('open');$('#mov').classList.remove('open')}
+
+async function lp(){
+const pg=$('#pg');
+pg.innerHTML='<div class="flex items-center justify-center" style="min-height:50vh"><div class="text-center"><div class="inline-block w-8 h-8 rounded-full border-2 border-t-transparent animate-spin mb-3" style="border-color:var(--gold);border-top-color:transparent"></div><p class="text-xs" style="color:var(--text3)">Fetching from API...</p></div></div>';
+kc();
+try{if(cp==='dash')await pDash(pg);else if(cp==='txs')await pTx(pg);else if(cp==='ana')await pAna(pg);else if(cp==='usr')await pUsr(pg)}
+catch(e){pg.innerHTML=`<div class="flex flex-col items-center justify-center" style="min-height:50vh"><i class="fa-solid fa-triangle-exclamation text-3xl mb-3" style="color:var(--exp)"></i><p class="text-sm" style="color:var(--text2)">${e.error||'Error'}</p><button class="btn btn-g btn-sm mt-4" onclick="lp()">Retry</button></div>`;if(!e.error?.includes('Access denied'))toast(e.error||'Failed');else toast(e.error)}}
+
+/* ===== DASHBOARD ===== */
+async function pDash(el){
+const d=await api('/dashboard');const s=d.summary;
+const savRate=s.totalIncome>0?((s.totalIncome-s.totalExpense)/s.totalIncome*100):0;
+el.innerHTML=`<div class="fiu">
+<div class="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8">
+<div><p class="text-[10px] font-bold uppercase tracking-[.18em] mb-2" style="color:var(--gold)">Overview</p><h1 class="text-3xl font-serif italic">Dashboard</h1></div>
+<div class="flex items-center gap-2"><span class="badge b-${u.role==='admin'?'adm':u.role==='analyst'?'ana':'viw'}">${u.role}</span><span class="text-xs" style="color:var(--text3)">·</span><span class="text-xs" style="color:var(--text3)">${s.transactionCount} records</span></div>
+</div>
+<div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-7">
+<div class="sc"><div class="line" style="background:linear-gradient(90deg,var(--inc),transparent)"></div><div class="glow-dot" style="background:var(--inc);box-shadow:0 0 12px var(--inc)"></div><p class="text-[10px] font-bold uppercase tracking-wider mb-3" style="color:var(--text3)">Total Income</p><p class="text-2xl font-bold">${fm(s.totalIncome)}</p><p class="text-[11px] mt-1.5" style="color:var(--text3)">All time earnings</p></div>
+<div class="sc"><div class="line" style="background:linear-gradient(90deg,var(--exp),transparent)"></div><div class="glow-dot" style="background:var(--exp);box-shadow:0 0 12px var(--exp)"></div><p class="text-[10px] font-bold uppercase tracking-wider mb-3" style="color:var(--text3)">Total Expenses</p><p class="text-2xl font-bold">${fm(s.totalExpense)}</p><p class="text-[11px] mt-1.5" style="color:var(--text3)">All time spending</p></div>
+<div class="sc"><div class="line" style="background:linear-gradient(90deg,var(--gold),transparent)"></div><div class="glow-dot" style="background:var(--gold);box-shadow:0 0 12px var(--gold)"></div><p class="text-[10px] font-bold uppercase tracking-wider mb-3" style="color:var(--text3)">Net Balance</p><p class="text-2xl font-bold" style="color:${s.netBalance>=0?'var(--inc)':'var(--exp)'}">${fm(s.netBalance)}</p><p class="text-[11px] mt-1.5" style="color:var(--text3)">${savRate>=0?'Savings rate: '+savRate.toFixed(1)+'%':'Deficit'}</p></div>
+<div class="sc"><div class="line" style="background:linear-gradient(90deg,var(--pur),transparent)"></div><div class="glow-dot" style="background:var(--pur);box-shadow:0 0 12px var(--pur)"></div><p class="text-[10px] font-bold uppercase tracking-wider mb-3" style="color:var(--text3)">Transactions</p><p class="text-2xl font-bold">${s.transactionCount}</p><p class="text-[11px] mt-1.5" style="color:var(--text3)">Total records stored</p></div>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-5 gap-4 mb-7">
+<div class="lg:col-span-3 cc"><div class="flex items-center justify-between mb-5"><h3 class="text-sm font-semibold">Monthly Trends</h3><span class="text-[10px] font-semibold" style="color:var(--text3)">LAST 6 MONTHS</span></div><div style="height:270px"><canvas id="cT"></canvas></div></div>
+<div class="lg:col-span-2 cc"><div class="flex items-center justify-between mb-5"><h3 class="text-sm font-semibold">Expenses</h3><span class="text-[10px] font-semibold" style="color:var(--text3)">BY CATEGORY</span></div><div style="height:270px;display:flex;align-items:center;justify-content:center"><canvas id="cC"></canvas></div></div>
+</div>
+<div class="tw"><div class="px-5 pt-5 pb-3 flex items-center justify-between"><h3 class="text-sm font-semibold">Recent Activity</h3><a href="#" class="text-[11px] font-semibold" style="color:var(--gold);text-decoration:none" onclick="event.preventDefault();cp='txs';$$('[data-p]').forEach(n=>n.classList.remove('on'));$$('[data-p=txs]')[0].classList.add('on');lp()">View all <i class="fa-solid fa-arrow-right text-[9px] ml-1"></i></a></div>
+<div style="overflow-x:auto"><table><thead><tr><th>Date</th><th>Description</th><th>Category</th><th>Type</th><th class="text-right">Amount</th></tr></thead>
+<tbody>${d.recentActivity.map((t,i)=>`<tr class="ri" style="animation-delay:${i*35}ms"><td style="color:var(--text3);white-space:nowrap;font-size:12px">${fd(t.date)}</td><td style="color:var(--text)">${t.description}</td><td><span class="flex items-center gap-2"><span class="cat-dot" style="background:${CC[t.category]||'#555'}"></span>${t.category}</span></td><td><span class="badge b-${t.type}">${t.type}</span></td><td class="text-right ${t.type==='income'?'ai':'ae'}">${t.type==='income'?'+':'−'}${fm(t.amount)}</td></tr>`).join('')}</tbody></table></div></div>
+</div>`;
+
+// Charts
+const mo={};d.monthlyTrends.forEach(m=>{if(!mo[m.month])mo[m.month]={income:0,expense:0};mo[m.month][m.type]=m.total});
+const mk=Object.keys(mo).sort();
+ch.cT=new Chart($('#cT'),{type:'line',data:{labels:mk.map(m=>{const[y,mo2]=m.split('-');return new Date(y,mo2-1).toLocaleDateString('en-US',{month:'short'})}),datasets:[
+{label:'Income',data:mk.map(m=>mo[m].income),borderColor:'#2dd4a0',backgroundColor:'rgba(45,212,160,.04)',fill:true,tension:.45,pointRadius:3,pointHoverRadius:6,borderWidth:2,pointBackgroundColor:'#2dd4a0'},
+{label:'Expenses',data:mk.map(m=>mo[m].expense),borderColor:'#f06060',backgroundColor:'rgba(240,96,96,.04)',fill:true,tension:.45,pointRadius:3,pointHoverRadius:6,borderWidth:2,pointBackgroundColor:'#f06060'}
+]},options:{responsive:true,maintainAspectRatio:false,interaction:{intersect:false,mode:'index'},scales:{y:{beginAtZero:true,ticks:{callback:v=>'$'+Math.round(v/1000)+'k'},grid:{color:'rgba(255,255,255,.02)'}},x:{grid:{display:false}}},plugins:{tooltip:{backgroundColor:'rgba(14,17,23,.95)',borderColor:'rgba(255,255,255,.08)',borderWidth:1,titleFont:{weight:'600'},bodyFont:{size:12},padding:12,cornerRadius:10,callbacks:{label:c=>` ${c.dataset.label}: ${fm(c.raw)}`}}}}});
+
+ch.cC=new Chart($('#cC'),{type:'doughnut',data:{labels:d.expenseBreakdown.map(c=>c.category),datasets:[{data:d.expenseBreakdown.map(c=>c.total),backgroundColor:d.expenseBreakdown.map(c=>CC[c.category]||'#555'),borderWidth:0,hoverOffset:6}]},options:{responsive:true,maintainAspectRatio:false,cutout:'68%',plugins:{legend:{position:'right',labels:{font:{size:10},padding:6,color:'rgba(255,255,255,.4)'}},tooltip:{backgroundColor:'rgba(14,17,23,.95)',borderColor:'rgba(255,255,255,.08)',borderWidth:1,cornerRadius:10,padding:12,callbacks:{label:c=>` ${c.label}: ${fm(c.raw)}`}}}}});
+}
+
+/* ===== TRANSACTIONS ===== */
+async function pTx(el){
+el.innerHTML=`<div class="fiu">
+<div class="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-6">
+<div><p class="text-[10px] font-bold uppercase tracking-[.18em] mb-2" style="color:var(--gold)">Records</p><h1 class="text-3xl font-serif italic">Transactions</h1><p class="text-sm mt-1" style="color:var(--text2)" id="txC">Loading...</p></div>
+ ${cn('cr')?'<button class="btn btn-p" onclick="oCr()"><i class="fa-solid fa-plus"></i>New Record</button>':''}
+</div>
+<div class="flex flex-wrap gap-3 mb-5">
+<input class="fi" style="flex:1;min-width:200px" id="fS" placeholder="Search descriptions or categories..." value="${tf.s}">
+<select class="fi" style="width:auto;min-width:130px" id="fT"><option value="">All Types</option><option value="income" ${tf.t==='income'?'selected':''}>Income</option><option value="expense" ${tf.t==='expense'?'selected':''}>Expense</option></select>
+<select class="fi" style="width:auto;min-width:160px" id="fC"><option value="">All Categories</option>${[...IC,...EC].map(c=>`<option value="${c}" ${tf.c===c?'selected':''}>${c}</option>`).join('')}</select>
+<button class="btn btn-g btn-sm" onclick="rTF()"><i class="fa-solid fa-rotate-left"></i></button>
+</div>
+<div class="tw"><div style="overflow-x:auto"><table><thead><tr><th>Date</th><th>Description</th><th>Category</th><th>Type</th><th class="text-right">Amount</th>${cn('ur')||cn('dr')?'<th class="text-center" style="width:80px">Actions</th>':''}</tr></thead><tbody id="txB"><tr><td colspan="6" class="text-center py-12" style="color:var(--text3)">Loading...</td></tr></tbody></table></div></div>
+<div id="txP" class="flex items-center justify-between mt-4"></div>
+</div>`;
+ $('#fS').oninput=()=>{tf.s=$('#fS').value;tp=0;fTx()};
+ $('#fT').onchange=()=>{tf.t=$('#fT').value;tf.c='';tp=0;fTx()};
+ $('#fC').onchange=()=>{tf.c=$('#fC').value;tp=0;fTx()};
+fTx()}
+
+async function fTx(){
+const b=$('#txB'),p=$('#txP'),c=$('#txC');
+try{const q=new URLSearchParams({limit:'10',offset:String(tp*10)});if(tf.s)q.set('search',tf.s);if(tf.t)q.set('type',tf.t);if(tf.c)q.set('category',tf.c);
+const d=await api('/transactions?'+q.toString());c.textContent=d.total+' records';
+b.innerHTML=d.records.length?d.records.map((t,i)=>`<tr class="ri" style="animation-delay:${i*20}ms">
+<td style="color:var(--text3);white-space:nowrap;font-size:12px">${fd(t.date)}</td>
+<td style="color:var(--text)">${t.description}</td>
+<td><span class="flex items-center gap-2"><span class="cat-dot" style="background:${CC[t.category]||'#555'}"></span>${t.category}</span></td>
+<td><span class="badge b-${t.type}">${t.type}</span></td>
+<td class="text-right ${t.type==='income'?'ai':'ae'}">${t.type==='income'?'+':'−'}${fm(t.amount)}</td>
+ ${cn('ur')||cn('dr')?`<td class="text-center"><div class="flex items-center justify-center gap-1">${cn('ur')?`<button class="btn-ic" onclick="oEd('${t.id}')" title="Edit"><i class="fa-solid fa-pen"></i></button>`:''}${cn('dr')?`<button class="btn-ic dg" onclick="cDel('${t.id}')" title="Delete"><i class="fa-solid fa-trash"></i></button>`:''}</div></td>`:''}
+</tr>`).join(''):`<tr><td colspan="6" class="text-center py-12" style="color:var(--text3)">No matching records</td></tr>`;
+const np=Math.max(1,Math.ceil(d.total/10));
+p.innerHTML=`<span class="text-[11px]" style="color:var(--text3)">${tp*10+1}–${Math.min((tp+1)*10,d.total)} of ${d.total}</span>
+<div class="flex gap-1">${tp>0?`<button class="pb" onclick="tp--;fTx()"><i class="fa-solid fa-chevron-left" style="font-size:9px"></i></button>`:''}${Array.from({length:np},(_,i)=>`<button class="pb${i===tp?' on':''}" onclick="tp=${i};fTx()">${i+1}</button>`).join('')}${tp<np-1?`<button class="pb" onclick="tp++;fTx()"><i class="fa-solid fa-chevron-right" style="font-size:9px"></i></button>`:''}</div>`}catch(e){b.innerHTML=`<tr><td colspan="6" class="text-center py-12" style="color:var(--exp)">${e.error}</td></tr>`}}
+function rTF(){tf={s:'',t:'',c:''};tp=0;$('#fS').value='';$('#fT').value='';$('#fC').value='';fTx()}
+
+/* ===== TX MODALS ===== */
+function txM(title,tx){
+const isE=!!tx;const cats=tx?(tx.type==='income'?IC:EC):IC;
+return `<div class="mo" id="mo" onclick="if(event.target===this)this.remove()"><div class="mb">
+<div class="flex items-center justify-between mb-5"><h3 class="text-base font-semibold">${title}</h3><button class="btn-ic" onclick="$('#mo').remove()"><i class="fa-solid fa-xmark"></i></button></div>
+<div class="flex flex-col gap-3">
+<div><label class="block text-[10px] font-bold uppercase tracking-wider mb-1.5" style="color:var(--text3)">Type</label><select class="fi" id="mTy"><option value="income" ${tx&&tx.type==='income'?'selected':''}>Income</option><option value="expense" ${tx&&tx.type==='expense'?'selected':''}>Expense</option></select></div>
+<div><label class="block text-[10px] font-bold uppercase tracking-wider mb-1.5" style="color:var(--text3)">Amount</label><input class="fi" type="number" id="mAm" min="0.01" step="0.01" placeholder="0.00" value="${tx?tx.amount:''}"></div>
+<div><label class="block text-[10px] font-bold uppercase tracking-wider mb-1.5" style="color:var(--text3)">Category</label><select class="fi" id="mCa">${cats.map(c=>`<option ${tx&&tx.category===c?'selected':''}>${c}</option>`).join('')}</select></div>
+<div><label class="block text-[10px] font-bold uppercase tracking-wider mb-1.5" style="color:var(--text3)">Date</label><input class="fi" type="date" id="mDa" value="${tx?tx.date:new Date().toISOString().split('T')[0]}"></div>
+<div><label class="block text-[10px] font-bold uppercase tracking-wider mb-1.5" style="color:var(--text3)">Description</label><input class="fi" id="mDe" placeholder="Enter description..." value="${tx?tx.description:''}"></div>
+<p id="mEr" class="text-[11px] hidden" style="color:var(--exp)"></p>
+<div class="flex gap-3 mt-1"><button class="btn btn-p flex-1" id="mSb">${isE?'Update':'Create'}</button><button class="btn btn-g" onclick="$('#mo').remove()">Cancel</button></div>
+</div></div></div>`}
+
+function oCr(){document.body.insertAdjacentHTML('beforeend',txM('New Transaction'));$('#mTy').onchange=function(){$('#mCa').innerHTML=(this.value==='income'?IC:EC).map(c=>`<option>${c}</option>`).join('')};$('#mSb').onclick=sCr}
+async function sCr(){const er=$('#mEr'),am=parseFloat($('#mAm').value),ty=$('#mTy').value,ca=$('#mCa').value,da=$('#mDa').value,de=$('#mDe').value.trim();
+if(!am||am<=0){er.textContent='Amount must be positive';er.classList.remove('hidden');return}if(!de){er.textContent='Description required';er.classList.remove('hidden');return}if(!da){er.textContent='Date required';er.classList.remove('hidden');return}
+try{await api('/transactions',{method:'POST',body:JSON.stringify({amount:am,type:ty,category:ca,description:de,date:da})});$('#mo').remove();toast('Created','success');fTx()}catch(e){er.textContent=e.details?e.details.map(d=>d.message).join(', '):e.error;er.classList.remove('hidden')}}
+
+async function oEd(id){try{const tx=await api('/transactions/'+id);document.body.insertAdjacentHTML('beforeend',txM('Edit Transaction',tx));
+ $('#mTy').onchange=function(){$('#mCa').innerHTML=(this.value==='income'?IC:EC).map(c=>`<option ${tx.category===c?'selected':''}>${c}</option>`).join('')};
+ $('#mSb').onclick=async()=>{const er=$('#mEr'),am=parseFloat($('#mAm').value),ty=$('#mTy').value,ca=$('#mCa').value,da=$('#mDa').value,de=$('#mDe').value.trim();
+if(!am||am<=0){er.textContent='Amount must be positive';er.classList.remove('hidden');return}if(!de){er.textContent='Description required';er.classList.remove('hidden');return}if(!da){er.textContent='Date required';er.classList.remove('hidden');return}
+try{await api('/transactions/'+id,{method:'PUT',body:JSON.stringify({amount:am,type:ty,category:ca,description:de,date:da})});$('#mo').remove();toast('Updated','success');fTx()}catch(e){er.textContent=e.details?e.details.map(d=>d.message).join(', '):e.error;er.classList.remove('hidden')}}}catch(e){toast(e.error)}}
+
+function cDel(id){document.body.insertAdjacentHTML('beforeend',`<div class="mo" id="mo" onclick="if(event.target===this)this.remove()"><div class="mb text-center">
+<div class="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4" style="background:var(--exp-bg)"><i class="fa-solid fa-trash" style="color:var(--exp)"></i></div>
+<h3 class="text-base font-semibold mb-2">Delete Transaction</h3><p class="text-sm mb-6" style="color:var(--text2)">This cannot be undone.</p>
+<div class="flex gap-3 justify-center"><button class="btn btn-d" id="cfD">Delete</button><button class="btn btn-g" onclick="$('#mo').remove()">Cancel</button></div></div></div>`);$('#cfD').onclick=async()=>{try{await api('/transactions/'+id,{method:'DELETE'});$('#mo').remove();toast('Deleted','success');fTx()}catch(e){toast(e.error)}}}
+
+/* ===== ANALYTICS ===== */
+async function pAna(el){
+const[ic,ec,mo2,s]=await Promise.all([api('/dashboard/categories/income'),api('/dashboard/categories/expense'),api('/dashboard/trends/monthly?months=6'),api('/dashboard/summary')]);
+const sr=s.totalIncome>0?((s.totalIncome-s.totalExpense)/s.totalIncome*100):0;
+el.innerHTML=`<div class="fiu">
+<div class="mb-8"><p class="text-[10px] font-bold uppercase tracking-[.18em] mb-2" style="color:var(--gold)">Insights</p><h1 class="text-3xl font-serif italic">Analytics</h1></div>
+<div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-7">
+<div class="sc"><div class="line" style="background:linear-gradient(90deg,var(--inc),transparent)"></div><div class="glow-dot" style="background:var(--inc);box-shadow:0 0 10px var(--inc)"></div><p class="text-[10px] font-bold uppercase tracking-wider mb-2" style="color:var(--text3)">Avg Monthly Income</p><p class="text-lg font-bold">${fm(s.totalIncome/6)}</p></div>
+<div class="sc"><div class="line" style="background:linear-gradient(90deg,var(--exp),transparent)"></div><div class="glow-dot" style="background:var(--exp);box-shadow:0 0 10px var(--exp)"></div><p class="text-[10px] font-bold uppercase tracking-wider mb-2" style="color:var(--text3)">Avg Monthly Expense</p><p class="text-lg font-bold">${fm(s.totalExpense/6)}</p></div>
+<div class="sc"><div class="line" style="background:linear-gradient(90deg,var(--gold),transparent)"></div><div class="glow-dot" style="background:var(--gold);box-shadow:0 0 10px var(--gold)"></div><p class="text-[10px] font-bold uppercase tracking-wider mb-2" style="color:var(--text3)">Savings Rate</p><p class="text-lg font-bold" style="color:${sr>=0?'var(--inc)':'var(--exp)'}">${sr.toFixed(1)}%</p></div>
+<div class="sc"><div class="line" style="background:linear-gradient(90deg,var(--pur),transparent)"></div><div class="glow-dot" style="background:var(--pur);box-shadow:0 0 10px var(--pur)"></div><p class="text-[10px] font-bold uppercase tracking-wider mb-2" style="color:var(--text3)">Top Expense</p><p class="text-lg font-bold">${ec[0]?ec[0].category:'—'}</p></div>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-7">
+<div class="cc"><div class="flex items-center justify-between mb-5"><h3 class="text-sm font-semibold">Income vs Expense</h3></div><div style="height:280px"><canvas id="cB"></canvas></div></div>
+<div class="cc"><div class="flex items-center justify-between mb-5"><h3 class="text-sm font-semibold">Net Balance Trend</h3></div><div style="height:280px"><canvas id="cN"></canvas></div></div>
+<div class="cc"><div class="flex items-center justify-between mb-5"><h3 class="text-sm font-semibold">Income Sources</h3></div><div style="height:280px;display:flex;align-items:center;justify-content:center"><canvas id="cI"></canvas></div></div>
+<div class="cc"><div class="flex items-center justify-between mb-5"><h3 class="text-sm font-semibold">Expense Distribution</h3></div><div style="height:280px;display:flex;align-items:center;justify-content:center"><canvas id="cE"></canvas></div></div>
+</div>
+<div class="tw"><div class="px-5 pt-5 pb-3"><h3 class="text-sm font-semibold">Category Summary</h3></div>
+<div style="overflow-x:auto"><table><thead><tr><th>Category</th><th>Type</th><th class="text-right">Total</th><th class="text-right">Count</th><th class="text-right">Average</th></tr></thead>
+<tbody>${[...ec,...ic].sort((a,b)=>b.total-a.total).map(c=>{const tp=EC.includes(c.category)?'expense':'income';return`<tr class="ri"><td><span class="flex items-center gap-2"><span class="cat-dot" style="background:${CC[c.category]||'#555'}"></span><span style="color:var(--text)">${c.category}</span></span></td><td><span class="badge b-${tp}">${tp}</span></td><td class="text-right ${tp==='income'?'ai':'ae'}">${fm(c.total)}</td><td class="text-right">${c.count}</td><td class="text-right" style="color:var(--text3)">${fm(c.total/c.count)}</td></tr>`}).join('')}</tbody></table></div></div>
+</div>`;
+
+const ms={};mo2.forEach(m=>{if(!ms[m.month])ms[m.month]={income:0,expense:0};ms[m.month][m.type]=m.total});const mk=Object.keys(ms).sort();
+const ttOpts={responsive:true,maintainAspectRatio:false,plugins:{tooltip:{backgroundColor:'rgba(14,17,23,.95)',borderColor:'rgba(255,255,255,.08)',borderWidth:1,cornerRadius:10,padding:12,callbacks:{label:c=>` ${c.dataset.label}: ${fm(c.raw)}`}}}};
+const scOpts={...ttOpts,scales:{y:{beginAtZero:true,ticks:{callback:v=>'$'+Math.round(v/1000)+'k'},grid:{color:'rgba(255,255,255,.02)'}},x:{grid:{display:false}}}};
+const lb=mk.map(m=>{const[y,mo]=m.split('-');return new Date(y,mo-1).toLocaleDateString('en-US',{month:'short'})});
+
+ch.cB=new Chart($('#cB'),{type:'bar',data:{labels:lb,datasets:[{label:'Income',data:mk.map(m=>ms[m].income),backgroundColor:'rgba(45,212,160,.55)',borderRadius:5,barPercentage:.5},{label:'Expenses',data:mk.map(m=>ms[m].expense),backgroundColor:'rgba(240,96,96,.55)',borderRadius:5,barPercentage:.5}]},options:scOpts});
+
+let run=0;const nd=mk.map((_,i)=>{run+=(ms[mk[i]].income-ms[mk[i]].expense);return run});
+ch.cN=new Chart($('#cN'),{type:'line',data:{labels:lb,datasets:[{label:'Cumulative Balance',data:nd,borderColor:'#d4a43a',backgroundColor:'rgba(212,164,58,.05)',fill:true,tension:.4,pointRadius:4,pointHoverRadius:7,borderWidth:2,pointBackgroundColor:'#d4a43a'}]},options:scOpts});
+
+const dOpts={...ttOpts,cutout:'66%',plugins:{...ttOpts.plugins,legend:{position:'right',labels:{font:{size:10},padding:6,color:'rgba(255,255,255,.35)'}}}};
+ch.cI=new Chart($('#cI'),{type:'doughnut',data:{labels:ic.map(c=>c.category),datasets:[{data:ic.map(c=>c.total),backgroundColor:ic.map(c=>CC[c.category]||'#555'),borderWidth:0,hoverOffset:6}]},options:dOpts});
+ch.cE=new Chart($('#cE'),{type:'doughnut',data:{labels:ec.map(c=>c.category),datasets:[{data:ec.map(c=>c.total),backgroundColor:ec.map(c=>CC[c.category]||'#555'),borderWidth:0,hoverOffset:6}]},options:dOpts});
+}
+
+/* ===== USERS ===== */
+async function pUsr(el){
+const us=await api('/users');const rc={admin:0,analyst:0,viewer:0};us.forEach(u=>rc[u.role]++);
+el.innerHTML=`<div class="fiu">
+<div class="mb-8"><p class="text-[10px] font-bold uppercase tracking-[.18em] mb-2" style="color:var(--gold)">Admin</p><h1 class="text-3xl font-serif italic">User Management</h1></div>
+<div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-7">
+<div class="sc"><div class="line" style="background:linear-gradient(90deg,var(--pur),transparent)"></div><p class="text-[10px] font-bold uppercase tracking-wider mb-2" style="color:var(--text3)">Total Users</p><p class="text-2xl font-bold">${us.length}</p></div>
+<div class="sc"><div class="line" style="background:linear-gradient(90deg,var(--inc),transparent)"></div><p class="text-[10px] font-bold uppercase tracking-wider mb-2" style="color:var(--text3)">Active</p><p class="text-2xl font-bold" style="color:var(--inc)">${us.filter(u=>u.status==='active').length}</p></div>
+<div class="sc"><div class="line" style="background:linear-gradient(90deg,var(--gold),transparent)"></div><p class="text-[10px] font-bold uppercase tracking-wider mb-2" style="color:var(--text3)">Roles</p><p class="text-sm mt-1"><span class="badge b-adm mr-1.5">Admin ${rc.admin}</span><span class="badge b-ana mr-1.5">Analyst ${rc.analyst}</span><span class="badge b-viw">Viewer ${rc.viewer}</span></p></div>
+</div>
+<div class="tw"><div style="overflow-x:auto"><table><thead><tr><th>User</th><th>Email</th><th>Role</th><th>Status</th><th>Joined</th></tr></thead>
+<tbody>${us.map((u,i)=>`<tr class="ri" style="animation-delay:${i*30}ms">
+<td><div class="flex items-center gap-3"><div class="w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0" style="background:${u.role==='admin'?'var(--gold)':u.role==='analyst'?'var(--inc)':'var(--pur)'};color:#0a0a0a">${ini(u.name)}</div><span style="color:var(--text)">${u.name}</span></div></td>
+<td>${u.email}</td>
+<td><select class="fi" style="width:auto;min-width:110px;padding:5px 28px 5px 10px;font-size:11px" onchange="chR('${u.id}',this.value)" ${u.id===user?.id?'disabled':''}><option value="admin" ${u.role==='admin'?'selected':''}>Admin</option><option value="analyst" ${u.role==='analyst'?'selected':''}>Analyst</option><option value="viewer" ${u.role==='viewer'?'selected':''}>Viewer</option></select></td>
+<td><label class="tog" ${u.id===user?.id?'style="opacity:.3;pointer-events:none"':''}><input type="checkbox" ${u.status==='active'?'checked':''} onchange="chS('${u.id}',this.checked)"><div class="tog-t"></div><div class="tog-k"></div></label></td>
+<td style="color:var(--text3);font-size:12px">${fd(u.created_at)}</td>
+</tr>`).join('')}</tbody></table></div></div>
+</div>`}
+
+async function chR(id,r){try{await api('/users/'+id,{method:'PUT',body:JSON.stringify({role:r})});toast('Role → '+r,'success')}catch(e){toast(e.error);pUsr($('#pg'))}}
+async function chS(id,a){try{await api('/users/'+id,{method:'PUT',body:JSON.stringify({status:a?'active':'inactive'})});toast('Status updated','success')}catch(e){toast(e.error);pUsr($('#pg'))}}
+
+/* ===== BOOT ===== */
+function render(){kc();if(!tk||!u)rLogin();else rApp()}
+render()
+</script>
+</body>
+</html>
